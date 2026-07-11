@@ -511,10 +511,10 @@ describe("codex helpers", () => {
     );
   });
 
-  it("formats query preview lines without result snippets", () => {
+  it("formats query preview lines as a tree", () => {
     assert.deepEqual(formatQueryPreviewLines(["first query", "second query"]), [
-      "  ⌕ 1. first query",
-      "  ⌕ 2. second query",
+      "  ├ first query",
+      "  └ second query",
     ]);
   });
 

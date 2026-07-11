@@ -233,7 +233,7 @@ function buildToolParameters(config: ResolvedConfig) {
 function buildTool(config: ResolvedConfig) {
   return defineTool({
     name: config.toolName,
-    label: config.searchApi === "standalone" ? "Codex Standalone Web" : "Codex Search",
+    label: config.searchApi === "standalone" ? "Codex Standalone Web" : "Web Search",
     description: buildToolDescription(config),
     promptSnippet:
       config.searchApi === "standalone"
@@ -605,12 +605,12 @@ function buildTool(config: ResolvedConfig) {
           : requestedCtxSize;
       const labels = buildCallLabels(args);
 
-      let text = theme.fg("toolTitle", theme.bold(config.toolName));
-      if (labels.length === 1) {
-        text += ` ${theme.fg("accent", formatInline(labels[0] ?? "", 90))}`;
-      } else {
-        text += ` ${theme.fg("accent", `${labels.length} actions`)}`;
-      }
+      const displayName = config.searchApi === "standalone" ? "Codex Standalone Web" : "Web Search";
+      const callLabel =
+        labels.length === 1 ? formatInline(labels[0] ?? "", 90) : `${labels.length} actions`;
+      let text = theme.fg("accent", `● ${displayName}(`);
+      text += callLabel;
+      text += theme.fg("accent", ")");
       text += theme.fg("dim", ` ${formatModeLabel(config.searchApi, ctxSize, fresh)}`);
       if (labels.length > 1) {
         text += `\n${renderCallQueries(labels, theme)}`;
@@ -898,12 +898,8 @@ function formatStandalonePreviewLabel(actionType: string | undefined): string {
 }
 
 function renderCallQueries(queries: unknown[], theme: Theme): string {
-  const iconPrefix = "  ⌕";
   return formatQueryPreviewLines(queries)
-    .map(
-      (line) =>
-        `${theme.fg("accent", iconPrefix)}${theme.fg("dim", line.slice(iconPrefix.length))}`,
-    )
+    .map((line) => `${theme.fg("accent", line.slice(0, 4))}${theme.fg("dim", line.slice(4))}`)
     .join("\n");
 }
 
@@ -932,7 +928,10 @@ export function selectStandalonePageRefId(
 }
 
 export function formatQueryPreviewLines(queries: unknown[], maxLength = 110): string[] {
-  return queries.map((query, index) => `  ⌕ ${index + 1}. ${formatInline(query, maxLength)}`);
+  return queries.map(
+    (query, index) =>
+      `  ${index === queries.length - 1 ? "└" : "├"} ${formatInline(query, maxLength)}`,
+  );
 }
 
 function buildRequestLabels(input: {
