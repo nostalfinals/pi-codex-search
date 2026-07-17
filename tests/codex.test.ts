@@ -548,7 +548,7 @@ describe("codex helpers", () => {
     assert.equal(requestedBody.tools?.[0]?.index_gated_web_access, undefined);
   });
 
-  it("ignores index_gated_web_access for /codex/responses", async () => {
+  it("sends canonical indexed_web_access to /codex/responses", async () => {
     let requestedBody = {} as { tools?: Array<Record<string, unknown>> };
     const sse =
       'event: response.output_item.done\ndata: {"item":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"ok"}]}}\n\n';
@@ -569,10 +569,10 @@ describe("codex helpers", () => {
       model: "m",
       transport,
       externalWebAccess: true,
-      indexGatedWebAccess: true,
+      indexedWebAccess: true,
     });
 
-    assert.equal(requestedBody.tools?.[0]?.index_gated_web_access, undefined);
+    assert.equal(requestedBody.tools?.[0]?.indexed_web_access, true);
   });
 
   it("summarizes Cloudflare challenge HTML errors", async () => {

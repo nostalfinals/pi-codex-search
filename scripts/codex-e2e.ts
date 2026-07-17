@@ -222,6 +222,7 @@ async function runSearchCase(input: {
           model: input.runtime.model,
           transport,
           externalWebAccess: input.freshness !== "cached",
+          indexedWebAccess: input.freshness === "indexed" ? true : undefined,
           searchContextSize: input.context,
           sessionId: makeSessionId("responses"),
           threadId: makeSessionId("thread"),

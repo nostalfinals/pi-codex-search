@@ -536,6 +536,7 @@ function buildTool(config: ResolvedConfig) {
               model,
               transport,
               externalWebAccess: freshness !== "cached",
+              indexedWebAccess: freshness === "indexed" ? true : undefined,
               searchContextSize,
               sessionId: ctx.sessionManager.getSessionId(),
               threadId: ctx.sessionManager.getSessionId(),
