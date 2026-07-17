@@ -103,6 +103,7 @@ export interface StandaloneCommandsOptions {
 interface StandaloneSearchResponse {
   encrypted_output?: string;
   output?: string;
+  results?: unknown;
 }
 
 export function externalWebAccessForFreshness(freshness: Freshness): StandaloneExternalWebAccess {
@@ -267,17 +268,22 @@ export async function runStandaloneCommands(
 
   const data = (await response.json()) as StandaloneSearchResponse;
   const text = typeof data.output === "string" ? data.output : "";
-  const refIds = extractRefIds(text);
+  const structuredResults = Array.isArray(data.results) ? data.results : undefined;
+  const refIds = {
+    ...extractRefIds(text),
+    ...extractStructuredRefIds(structuredResults),
+  };
   const searchCalls = inferSearchCalls(options);
 
   const result: CodexWebSearchResult = {
     model,
     text,
     searchCalls,
-    citations: extractMarkdownCitations(text),
+    citations: extractCitations(structuredResults, text),
     refIds,
   };
   if (data.encrypted_output !== undefined) result.encryptedOutput = data.encrypted_output;
+  if (structuredResults !== undefined) result.results = structuredResults;
   return result;
 }
 
@@ -355,6 +361,7 @@ function inferSearchCalls(options: StandaloneCommandsOptions): CodexSearchCall[]
 }
 
 const REF_ID_PATTERN = /\b(turn\d+(?:search|fetch|view)\d+)\b/g;
+const EXACT_REF_ID_PATTERN = /^turn\d+(?:search|fetch|view)\d+$/;
 
 function extractRefIds(text: string): Record<string, string> {
   const refs: Record<string, string> = {};
@@ -363,6 +370,44 @@ function extractRefIds(text: string): Record<string, string> {
     if (refId) refs[refId] = refId;
   }
   return refs;
+}
+
+function extractStructuredRefIds(results: unknown[] | undefined): Record<string, string> {
+  const refs: Record<string, string> = {};
+  for (const result of results ?? []) {
+    if (!isRecord(result)) continue;
+    const refId = result.ref_id;
+    if (typeof refId === "string" && EXACT_REF_ID_PATTERN.test(refId)) refs[refId] = refId;
+  }
+  return refs;
+}
+
+function extractCitations(results: unknown[] | undefined, text: string): CodexCitation[] {
+  const citations = new Map<string, CodexCitation>();
+  for (const result of results ?? []) {
+    if (!isRecord(result) || typeof result.url !== "string" || !isHttpUrl(result.url)) continue;
+    citations.set(result.url, {
+      title: typeof result.title === "string" ? result.title : undefined,
+      url: result.url,
+    });
+  }
+  for (const citation of extractMarkdownCitations(text)) {
+    if (!citations.has(citation.url)) citations.set(citation.url, citation);
+  }
+  return [...citations.values()];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function extractMarkdownCitations(text: string): CodexCitation[] {

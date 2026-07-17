@@ -216,7 +216,16 @@ describe("codex helpers", () => {
       return new Response(
         JSON.stringify({
           encrypted_output: "ciphertext",
-          output: "Search result from [OpenAI](https://openai.com).",
+          output: "Search result.",
+          results: [
+            {
+              type: "text_result",
+              ref_id: "turn0search0",
+              title: "OpenAI",
+              url: "https://openai.com",
+              future_field: { preserved: true },
+            },
+          ],
         }),
       );
     };
@@ -257,11 +266,41 @@ describe("codex helpers", () => {
       },
       max_output_tokens: 8000,
     });
-    assert.equal(result.text, "Search result from [OpenAI](https://openai.com).");
+    assert.equal(result.text, "Search result.");
     assert.equal(result.encryptedOutput, "ciphertext");
-    assert.deepEqual(result.citations, [
-      { title: "OpenAI", url: "https://openai.com", startIndex: 19 },
+    assert.deepEqual(result.results, [
+      {
+        type: "text_result",
+        ref_id: "turn0search0",
+        title: "OpenAI",
+        url: "https://openai.com",
+        future_field: { preserved: true },
+      },
     ]);
+    assert.deepEqual(result.refIds, { turn0search0: "turn0search0" });
+    assert.deepEqual(result.citations, [{ title: "OpenAI", url: "https://openai.com" }]);
+  });
+
+  it("treats null standalone structured results as unavailable", async () => {
+    const fetchImpl = async () =>
+      new Response(JSON.stringify({ output: "Lookup result turn0fetch0", results: null }));
+    const transport = createTransport({
+      token: "token",
+      accountId: "account",
+      baseUrl: "https://example.test/backend/codex",
+      fetchImpl: fetchImpl as typeof fetch,
+    });
+
+    const result = await runStandaloneCommands({
+      model: "gpt-test",
+      transport,
+      sessionId: "pi-codex-search",
+      open: [{ refId: "https://example.com" }],
+      freshness: "live",
+    });
+
+    assert.equal(result.results, undefined);
+    assert.deepEqual(result.refIds, { turn0fetch0: "turn0fetch0" });
   });
 
   it("posts standalone web content and lookup commands one action per request", async () => {
@@ -511,10 +550,10 @@ describe("codex helpers", () => {
     );
   });
 
-  it("formats query preview lines without result snippets", () => {
+  it("formats query preview lines as a tree", () => {
     assert.deepEqual(formatQueryPreviewLines(["first query", "second query"]), [
-      "  ⌕ 1. first query",
-      "  ⌕ 2. second query",
+      "  ├ first query",
+      "  └ second query",
     ]);
   });
 
@@ -548,7 +587,7 @@ describe("codex helpers", () => {
     assert.equal(requestedBody.tools?.[0]?.index_gated_web_access, undefined);
   });
 
-  it("ignores index_gated_web_access for /codex/responses", async () => {
+  it("sends canonical indexed_web_access to /codex/responses", async () => {
     let requestedBody = {} as { tools?: Array<Record<string, unknown>> };
     const sse =
       'event: response.output_item.done\ndata: {"item":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"ok"}]}}\n\n';
@@ -569,10 +608,10 @@ describe("codex helpers", () => {
       model: "m",
       transport,
       externalWebAccess: true,
-      indexGatedWebAccess: true,
+      indexedWebAccess: true,
     });
 
-    assert.equal(requestedBody.tools?.[0]?.index_gated_web_access, undefined);
+    assert.equal(requestedBody.tools?.[0]?.indexed_web_access, true);
   });
 
   it("summarizes Cloudflare challenge HTML errors", async () => {

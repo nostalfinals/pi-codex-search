@@ -32,6 +32,7 @@ export interface CodexWebSearchResult {
     totalTokens?: number;
   };
   encryptedOutput?: string;
+  results?: unknown[];
 }
 
 export interface CodexModel {
