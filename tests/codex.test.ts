@@ -21,6 +21,7 @@ import {
   selectDefaultModel,
   type StandaloneCommandsOptions,
 } from "../src/codex.ts";
+import { resolveCodexAccountId } from "../src/pi-auth.ts";
 import { formatQueryPreviewLines, selectStandalonePageRefId } from "../index.ts";
 
 describe("codex helpers", () => {
@@ -177,6 +178,61 @@ describe("codex helpers", () => {
 
     assert.equal(extractAccountIdFromToken(token), "acct_123");
     assert.equal(extractAccountIdFromToken("not-a-jwt"), undefined);
+  });
+
+  it("prefers a stored OAuth account id when the token has no account claim", () => {
+    assert.equal(
+      resolveCodexAccountId("opaque-token", {}, (provider) => {
+        assert.equal(provider, "openai-codex");
+        return { type: "oauth", accountId: "acct_stored" };
+      }),
+      "acct_stored",
+    );
+  });
+
+  it("falls back to the token account id when stored credentials are unusable", () => {
+    const payload = Buffer.from(
+      JSON.stringify({
+        "https://api.openai.com/auth": { chatgpt_account_id: "acct_token" },
+      }),
+    ).toString("base64url");
+
+    assert.equal(
+      resolveCodexAccountId(`header.${payload}.signature`, {}, () => ({
+        type: "oauth",
+        accountId: "   ",
+      })),
+      "acct_token",
+    );
+  });
+
+  it("returns undefined when neither stored credentials nor the token provide an account id", () => {
+    assert.equal(
+      resolveCodexAccountId("opaque-token", {}, () => undefined),
+      undefined,
+    );
+  });
+
+  it("uses the legacy credential store when Pi's public reader is unavailable", () => {
+    assert.equal(
+      resolveCodexAccountId(
+        "opaque-token",
+        { authStorage: { get: () => ({ type: "oauth", accountId: "acct_legacy" }) } },
+        null,
+      ),
+      "acct_legacy",
+    );
+  });
+
+  it("prefers the public reader when both credential APIs are present", () => {
+    assert.equal(
+      resolveCodexAccountId(
+        "opaque-token",
+        { authStorage: { get: () => ({ type: "oauth", accountId: "acct_legacy" }) } },
+        () => ({ type: "oauth", accountId: "acct_public" }),
+      ),
+      "acct_public",
+    );
   });
 
   it("selects default model first", () => {
