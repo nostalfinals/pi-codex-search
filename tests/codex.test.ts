@@ -190,6 +190,32 @@ describe("codex helpers", () => {
     );
   });
 
+  it("trims a stored OAuth account id", () => {
+    assert.equal(
+      resolveCodexAccountId("opaque-token", {}, () => ({
+        type: "oauth",
+        accountId: "  acct_stored  ",
+      })),
+      "acct_stored",
+    );
+  });
+
+  it("falls back to the token account id when a stored OAuth account id is not a string", () => {
+    const payload = Buffer.from(
+      JSON.stringify({
+        "https://api.openai.com/auth": { chatgpt_account_id: "acct_token" },
+      }),
+    ).toString("base64url");
+
+    assert.equal(
+      resolveCodexAccountId(`header.${payload}.signature`, {}, () => ({
+        type: "oauth",
+        accountId: 42,
+      })),
+      "acct_token",
+    );
+  });
+
   it("falls back to the token account id when stored credentials are unusable", () => {
     const payload = Buffer.from(
       JSON.stringify({

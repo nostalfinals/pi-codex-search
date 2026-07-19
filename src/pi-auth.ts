@@ -4,8 +4,8 @@ import { extractAccountIdFromToken } from "./codex.ts";
 const OPENAI_CODEX_PROVIDER = "openai-codex";
 
 interface StoredCredential {
-  type?: string;
-  accountId?: string;
+  type?: unknown;
+  accountId?: unknown;
 }
 
 interface LegacyModelRegistry {
@@ -28,8 +28,9 @@ export function resolveCodexAccountId(
   const credential = readStoredCredential
     ? readStoredCredential(OPENAI_CODEX_PROVIDER)
     : (modelRegistry as LegacyModelRegistry).authStorage?.get(OPENAI_CODEX_PROVIDER);
-  if (credential?.type === "oauth" && credential.accountId?.trim()) {
-    return credential.accountId;
+  if (credential?.type === "oauth" && typeof credential.accountId === "string") {
+    const accountId = credential.accountId.trim();
+    if (accountId) return accountId;
   }
   return extractAccountIdFromToken(token);
 }
