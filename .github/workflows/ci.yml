@@ -126,12 +126,15 @@ jobs:
       - name: Comment coverage and package size
         if: always() && matrix.latest == true && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v9
+        env:
+          COVERAGE_SUMMARY: ${{ steps.coverage.outputs.summary || 'Coverage summary unavailable.' }}
+          PACKAGE_SUMMARY: ${{ steps.package.outputs.summary || 'Package size unavailable.' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const marker = '<!-- pi-codex-search-ci-summary -->';
-            const coverage = `${{ steps.coverage.outputs.summary || 'Coverage summary unavailable.' }}`;
-            const packageSize = `${{ steps.package.outputs.summary || 'Package size unavailable.' }}`;
+            const coverage = process.env.COVERAGE_SUMMARY;
+            const packageSize = process.env.PACKAGE_SUMMARY;
             const body = [
               marker,
               '## CI summary',
