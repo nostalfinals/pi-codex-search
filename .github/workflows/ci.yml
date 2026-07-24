@@ -17,13 +17,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pi-version:
+        include:
           # 0.79.10: lowest supported version, legacy authStorage path
+          - pi-version: 0.79.10
           # 0.80.7: last release with ModelRegistry.authStorage (removed in 0.80.8)
+          - pi-version: 0.80.7
           # 0.82.0: latest, readStoredCredential path
-          - 0.79.10
-          - 0.80.7
-          - 0.82.0
+          - pi-version: 0.82.0
+            latest: true
     name: test (pi ${{ matrix.pi-version }})
     steps:
       - name: Checkout
@@ -95,7 +96,7 @@ jobs:
         run: npm run format:check
 
       - name: Package size
-        if: matrix.pi-version == '0.82.0'
+        if: matrix.latest == true
         id: package
         shell: bash
         run: |
@@ -123,7 +124,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Comment coverage and package size
-        if: always() && matrix.pi-version == '0.82.0' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: always() && matrix.latest == true && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
