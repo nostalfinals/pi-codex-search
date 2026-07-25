@@ -13,7 +13,6 @@ import {
   CodexError,
   createRefStore,
   createTransport,
-  extractAccountIdFromToken,
   fetchCodexModels,
   runResponsesSearch,
   runStandaloneCommands,
@@ -32,6 +31,7 @@ import {
   loadConfig,
   type ResolvedConfig,
 } from "./src/config.ts";
+import { resolveCodexAccountId } from "./src/pi-auth.ts";
 
 const OPENAI_CODEX_PROVIDER = "openai-codex";
 
@@ -304,7 +304,7 @@ function buildTool(config: ResolvedConfig) {
         throw err;
       }
 
-      const accountId = getConfiguredAccountId(ctx, token);
+      const accountId = resolveCodexAccountId(token, ctx.modelRegistry);
       if (!accountId) {
         throw new CodexError(
           "auth",
@@ -703,14 +703,6 @@ export default function codexWebSearchExtension(pi: ExtensionAPI) {
       );
     }
   });
-}
-
-function getConfiguredAccountId(ctx: ExtensionContext, token: string): string | undefined {
-  const credential = ctx.modelRegistry.authStorage.get(OPENAI_CODEX_PROVIDER);
-  if (credential?.type === "oauth" && typeof credential.accountId === "string") {
-    return credential.accountId;
-  }
-  return extractAccountIdFromToken(token);
 }
 
 async function resolveSearchModel(

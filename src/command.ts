@@ -8,7 +8,7 @@ import {
   type SettingItem,
   SettingsList,
 } from "@earendil-works/pi-tui";
-import { type CodexModel, extractAccountIdFromToken, fetchCodexModels } from "./codex.ts";
+import { type CodexModel, fetchCodexModels } from "./codex.ts";
 import {
   type ConfigScope,
   DEFAULT_BATCH_SIZE,
@@ -27,6 +27,7 @@ import {
   type ResolvedConfig,
   saveConfig,
 } from "./config.ts";
+import { resolveCodexAccountId } from "./pi-auth.ts";
 
 const COMMAND_NAME = "codex-search-settings";
 const SUBCOMMANDS = ["status", "reset"] as const;
@@ -450,11 +451,7 @@ async function loadModels(
 ): Promise<CodexModel[]> {
   const token = await ctx.modelRegistry.getApiKeyForProvider(OPENAI_CODEX_PROVIDER);
   if (!token) return [];
-  const credential = ctx.modelRegistry.authStorage.get(OPENAI_CODEX_PROVIDER);
-  const accountId =
-    credential?.type === "oauth" && typeof credential.accountId === "string"
-      ? credential.accountId
-      : extractAccountIdFromToken(token);
+  const accountId = resolveCodexAccountId(token, ctx.modelRegistry);
   if (!accountId) return [];
 
   const opts: Parameters<typeof fetchCodexModels>[0] = { token, accountId };
