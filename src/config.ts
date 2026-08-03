@@ -58,7 +58,7 @@ export const MAX_BATCH_SIZE = 32;
 
 export function getConfigPath(scope: ConfigScope, cwd: string): string {
   if (scope === "project") return join(cwd, ".pi", CONFIG_FILE_NAME);
-  return join(homedir(), ".pi", CONFIG_FILE_NAME);
+  return join(homedir(), ".pi", "agent", CONFIG_FILE_NAME);
 }
 
 export function isProjectTrustedContext(ctx: unknown): boolean {

@@ -102,9 +102,9 @@ describe("config loader", () => {
   });
 
   it("env overrides enabled with case-insensitive true/false", async () => {
-    await mkdir(join(home, ".pi"), { recursive: true });
+    await mkdir(join(home, ".pi", "agent"), { recursive: true });
     await writeFile(
-      join(home, ".pi", CONFIG_FILE_NAME),
+      join(home, ".pi", "agent", CONFIG_FILE_NAME),
       JSON.stringify({ enabled: false }),
       "utf-8",
     );
@@ -134,9 +134,9 @@ describe("config loader", () => {
   });
 
   it("reads the home config when only the home file exists", async () => {
-    await mkdir(join(home, ".pi"), { recursive: true });
+    await mkdir(join(home, ".pi", "agent"), { recursive: true });
     await writeFile(
-      join(home, ".pi", CONFIG_FILE_NAME),
+      join(home, ".pi", "agent", CONFIG_FILE_NAME),
       JSON.stringify({ toolName: "home_search", freshness: "cached" }),
       "utf-8",
     );
@@ -149,9 +149,9 @@ describe("config loader", () => {
   });
 
   it("lets the project file override the home file", async () => {
-    await mkdir(join(home, ".pi"), { recursive: true });
+    await mkdir(join(home, ".pi", "agent"), { recursive: true });
     await writeFile(
-      join(home, ".pi", CONFIG_FILE_NAME),
+      join(home, ".pi", "agent", CONFIG_FILE_NAME),
       JSON.stringify({ toolName: "home_search", model: "home_model" }),
       "utf-8",
     );
@@ -171,9 +171,9 @@ describe("config loader", () => {
   });
 
   it("lets project config explicitly disable home standalone tool", async () => {
-    await mkdir(join(home, ".pi"), { recursive: true });
+    await mkdir(join(home, ".pi", "agent"), { recursive: true });
     await writeFile(
-      join(home, ".pi", CONFIG_FILE_NAME),
+      join(home, ".pi", "agent", CONFIG_FILE_NAME),
       JSON.stringify({ standaloneEnabled: true }),
       "utf-8",
     );
@@ -189,9 +189,9 @@ describe("config loader", () => {
   });
 
   it("skips the project file when the project is not trusted", async () => {
-    await mkdir(join(home, ".pi"), { recursive: true });
+    await mkdir(join(home, ".pi", "agent"), { recursive: true });
     await writeFile(
-      join(home, ".pi", CONFIG_FILE_NAME),
+      join(home, ".pi", "agent", CONFIG_FILE_NAME),
       JSON.stringify({ toolName: "home_search", model: "home_model" }),
       "utf-8",
     );
@@ -270,9 +270,9 @@ describe("config loader", () => {
   });
 
   it("rejects an invalid searchContextSize value", async () => {
-    await mkdir(join(home, ".pi"), { recursive: true });
+    await mkdir(join(home, ".pi", "agent"), { recursive: true });
     await writeFile(
-      join(home, ".pi", CONFIG_FILE_NAME),
+      join(home, ".pi", "agent", CONFIG_FILE_NAME),
       JSON.stringify({ searchContextSize: "huge" }),
       "utf-8",
     );
@@ -333,6 +333,16 @@ describe("config loader", () => {
     const resolved = await loadConfig(cwd);
     assert.equal(resolved.toolName, "saved_search");
     assert.equal(resolved.defaultFreshness, "cached");
+  });
+
+  it("saveConfig writes the home config under ~/.pi/agent and roundtrips", async () => {
+    const filePath = await saveConfig("home", cwd, { toolName: "saved_home_search" });
+    assert.equal(filePath, join(home, ".pi", "agent", CONFIG_FILE_NAME));
+    assert.equal(filePath, getConfigPath("home", cwd));
+
+    const resolved = await loadConfig(cwd);
+    assert.equal(resolved.toolName, "saved_home_search");
+    assert.ok(resolved.sources.home);
   });
 
   it("deleteConfig removes the file and reports whether it existed", async () => {
