@@ -3,6 +3,7 @@ import {
   defineTool,
   type ExtensionAPI,
   type ExtensionContext,
+  keyHint,
   type Theme,
 } from "@earendil-works/pi-coding-agent";
 import type { Static } from "@earendil-works/pi-ai";
@@ -608,7 +609,23 @@ function buildTool(config: ResolvedConfig) {
           : requestedCtxSize;
       const labels = buildCallLabels(args);
 
-      const displayName = config.searchApi === "standalone" ? "Codex Standalone Web" : "Web Search";
+      if (config.searchApi === "responses") {
+        const title = theme.fg("toolTitle", theme.bold("codex_search"));
+        const callLabel =
+          labels.length === 1
+            ? ` ${theme.fg("accent", formatInline(labels[0] ?? "", 90))}`
+            : labels.length > 1
+              ? ` ${theme.fg("accent", `${labels.length} queries`)}`
+              : "";
+        let text = `${title}${callLabel}`;
+        text += theme.fg("dim", ` (${ctxSize}/${fresh})`);
+        if (labels.length > 1) {
+          text += `\n${renderCallQueries(labels, theme)}`;
+        }
+        return new Text(text, 0, 0);
+      }
+
+      const displayName = "Codex Standalone Web";
       const callLabel =
         labels.length === 1 ? formatInline(labels[0] ?? "", 90) : `${labels.length} actions`;
       let text = theme.fg("accent", `● ${displayName}(`);
@@ -623,6 +640,18 @@ function buildTool(config: ResolvedConfig) {
 
     renderResult(result, { expanded, isPartial }, theme) {
       const details = result.details as WebSearchDetails | undefined;
+
+      if (config.searchApi === "responses") {
+        if (isPartial) {
+          return new Text(renderResponsesProgress(details, theme), 0, 0);
+        }
+        if (!details) {
+          const content = result.content.find((part) => part.type === "text");
+          const text = content?.type === "text" ? content.text : "";
+          return new Text(text || theme.fg("muted", "Search finished"), 0, 0);
+        }
+        return new Text(renderResponsesResult(details, expanded, theme), 0, 0);
+      }
 
       if (isPartial) {
         return new Text(renderPartial(details, theme), 0, 0);
@@ -843,6 +872,92 @@ function formatModeLabel(
 function formatFailureBlock(failure: QueryFailure, multiple: boolean): string {
   const body = `[${failure.kind}] ${failure.message}`;
   return multiple ? `## Query: ${failure.query}\n\nFAILED: ${body}` : `FAILED: ${body}`;
+}
+
+function renderResponsesProgress(details: WebSearchDetails | undefined, theme: Theme): string {
+  if (!details) return theme.fg("muted", "Searching…");
+  const completed = details.completed ?? 0;
+  const total = details.total ?? details.queryCount;
+  return theme.fg(
+    "muted",
+    completed < total
+      ? `Searching ${completed}/${total}…`
+      : `Searching ${completed}/${total} (finalizing)`,
+  );
+}
+
+function renderResponsesResult(details: WebSearchDetails, expanded: boolean, theme: Theme): string {
+  const summary = renderResponsesSummary(details, theme);
+  if (!expanded) {
+    const hasDetails = details.successes.length > 0 || details.failures.length > 0;
+    return hasDetails
+      ? `${summary}${theme.fg("dim", `  (${keyHint("app.tools.expand", "to expand")})`)}`
+      : summary;
+  }
+
+  let text = `${summary}\n${theme.fg("dim", `model ${details.model}`)}`;
+  const multiple = details.queryCount > 1;
+
+  for (const [index, success] of details.successes.entries()) {
+    text += "\n\n";
+    if (multiple) {
+      text += theme.fg("toolTitle", theme.bold(`Query ${index + 1}`));
+      text += ` ${theme.fg("dim", formatInline(success.query, 100))}\n`;
+    }
+    text += renderToolOutput(success.text || "(no response text)", theme);
+    if (success.citations.length > 0) {
+      text += `\n\n${theme.fg("toolTitle", theme.bold("Sources"))}`;
+      for (const [sourceIndex, citation] of success.citations.entries()) {
+        const title = citation.title?.trim() || citation.url;
+        text += `\n${theme.fg("toolOutput", `[${sourceIndex + 1}] ${title}`)}`;
+        if (title !== citation.url) {
+          text += `\n${theme.fg("dim", `    ${citation.url}`)}`;
+        }
+      }
+    }
+  }
+
+  for (const failure of details.failures) {
+    text += `\n\n${theme.fg("error", theme.bold("Error"))}`;
+    text += ` ${theme.fg("dim", formatInline(failure.query, 100))}`;
+    text += `\n${theme.fg("error", `[${failure.kind}] ${failure.message}`)}`;
+  }
+
+  return text;
+}
+
+function renderResponsesSummary(details: WebSearchDetails, theme: Theme): string {
+  const succeeded = details.queryCount - details.failedQueryCount;
+  const searchCount =
+    details.failedQueryCount > 0
+      ? `${succeeded}/${details.queryCount} searches`
+      : `${succeeded} ${succeeded === 1 ? "search" : "searches"}`;
+  const parts = [searchCount];
+  const webActionCount = countSuccessWebActions(details);
+  if (webActionCount > 0) {
+    parts.push(`${webActionCount} web action${webActionCount === 1 ? "" : "s"}`);
+  }
+  const sourceCount = countSuccessCitations(details);
+  if (sourceCount > 0) {
+    parts.push(`${sourceCount} source${sourceCount === 1 ? "" : "s"}`);
+  }
+  if (details.elapsedMs !== undefined) {
+    parts.push(formatCompactDuration(details.elapsedMs));
+  }
+  const role = details.failedQueryCount > 0 ? "warning" : "muted";
+  return theme.fg(role, parts.join(" • "));
+}
+
+function formatCompactDuration(elapsedMs: number): string {
+  if (elapsedMs < 1000) return `${elapsedMs}ms`;
+  return `${Math.max(1, Math.round(elapsedMs / 1000))}s`;
+}
+
+function renderToolOutput(value: string, theme: Theme): string {
+  return value
+    .split("\n")
+    .map((line) => theme.fg("toolOutput", line))
+    .join("\n");
 }
 
 function renderPartial(details: WebSearchDetails | undefined, theme: Theme): string {
