@@ -62,11 +62,6 @@ interface StandaloneCallPlan {
   openedUrl?: string;
 }
 
-interface WebSearchFailureDetail {
-  kind: CodexErrorKind;
-  message: string;
-}
-
 interface WebSearchDetails {
   model: string;
   api: string;
@@ -77,7 +72,6 @@ interface WebSearchDetails {
   failedQueryCount: number;
   successes: QuerySuccess[];
   failures: QueryFailure[];
-  failure?: WebSearchFailureDetail;
   partial?: boolean;
   completed?: number;
   total?: number;
@@ -609,29 +603,16 @@ function buildTool(config: ResolvedConfig) {
           : requestedCtxSize;
       const labels = buildCallLabels(args);
 
-      if (config.searchApi === "responses") {
-        const title = theme.fg("toolTitle", theme.bold("codex_search"));
-        const callLabel =
-          labels.length === 1
-            ? ` ${theme.fg("accent", formatInline(labels[0] ?? "", 90))}`
-            : labels.length > 1
-              ? ` ${theme.fg("accent", `${labels.length} queries`)}`
-              : "";
-        let text = `${title}${callLabel}`;
-        text += theme.fg("dim", ` (${ctxSize}/${fresh})`);
-        if (labels.length > 1) {
-          text += `\n${renderCallQueries(labels, theme)}`;
-        }
-        return new Text(text, 0, 0);
-      }
-
-      const displayName = "Codex Standalone Web";
+      const noun = config.searchApi === "standalone" ? "actions" : "queries";
+      const title = theme.fg("toolTitle", theme.bold(config.toolName));
       const callLabel =
-        labels.length === 1 ? formatInline(labels[0] ?? "", 90) : `${labels.length} actions`;
-      let text = theme.fg("accent", `● ${displayName}(`);
-      text += callLabel;
-      text += theme.fg("accent", ")");
-      text += theme.fg("dim", ` ${formatModeLabel(config.searchApi, ctxSize, fresh)}`);
+        labels.length === 1
+          ? ` ${theme.fg("accent", formatInline(labels[0] ?? "", 90))}`
+          : labels.length > 1
+            ? ` ${theme.fg("accent", `${labels.length} ${noun}`)}`
+            : "";
+      let text = `${title}${callLabel}`;
+      text += theme.fg("dim", ` (${ctxSize}/${fresh})`);
       if (labels.length > 1) {
         text += `\n${renderCallQueries(labels, theme)}`;
       }
@@ -641,76 +622,15 @@ function buildTool(config: ResolvedConfig) {
     renderResult(result, { expanded, isPartial }, theme) {
       const details = result.details as WebSearchDetails | undefined;
 
-      if (config.searchApi === "responses") {
-        if (isPartial) {
-          return new Text(`\n${renderResponsesProgress(details, theme)}`, 0, 0);
-        }
-        if (!details) {
-          const content = result.content.find((part) => part.type === "text");
-          const text = content?.type === "text" ? content.text : "";
-          return new Text(`\n${text || theme.fg("muted", "Search finished")}`, 0, 0);
-        }
-        return new Text(`\n${renderResponsesResult(details, expanded, theme)}`, 0, 0);
-      }
-
       if (isPartial) {
-        return new Text(renderPartial(details, theme), 0, 0);
+        return new Text(`\n${renderToolProgress(details, theme)}`, 0, 0);
       }
-
       if (!details) {
         const content = result.content.find((part) => part.type === "text");
         const text = content?.type === "text" ? content.text : "";
-        return new Text(text || theme.fg("success", "✓ Web search finished"), 0, 0);
+        return new Text(`\n${text || theme.fg("muted", "Search finished")}`, 0, 0);
       }
-
-      const total = details.queryCount;
-      const failed = details.failedQueryCount;
-      const ok = total - failed;
-      const resultSuffix = formatResultSuffix(details);
-
-      let header: string;
-      if (ok === 0) {
-        header = theme.fg("warning", `⚠ Web search failed (${details.failure?.kind ?? "unknown"})`);
-      } else if (failed > 0) {
-        header = theme.fg(
-          "warning",
-          `Did ${ok}/${total} ${formatOperationNoun(details, total)}${formatDurationSuffix(details.elapsedMs)}${resultSuffix}`,
-        );
-      } else {
-        const operationCount = countSuccessOperations(details);
-        header = theme.fg(
-          "success",
-          `Did ${operationCount} ${formatOperationNoun(details, operationCount)}${formatDurationSuffix(details.elapsedMs)}${resultSuffix}`,
-        );
-      }
-      header += theme.fg(
-        "muted",
-        ` ${formatModeLabel(details.api, details.searchContextSize, details.freshness)}`,
-      );
-
-      if (!expanded) {
-        const preview = renderCollapsedPreview(details, theme);
-        return new Text(preview ? `${header}\n${preview}` : header, 0, 0);
-      }
-
-      const content = result.content.find((part) => part.type === "text");
-      const body = content?.type === "text" ? content.text : "";
-
-      let text = header;
-      text += `\n${theme.fg("muted", `Model: ${details.model}`)}`;
-      if (failed > 0) {
-        text += `\n${theme.fg("warning", `Failures (${failed}):`)}`;
-        for (const [i, f] of details.failures.entries()) {
-          text += `\n${theme.fg("dim", `  ${i + 1}. [${f.kind}] ${formatInline(f.query, 60)} — ${formatInline(f.message, 100)}`)}`;
-        }
-      }
-      if (body) {
-        text += `\n\n${body
-          .split("\n")
-          .map((line) => theme.fg("toolOutput", line))
-          .join("\n")}`;
-      }
-      return new Text(text, 0, 0);
+      return new Text(`\n${renderToolResult(details, expanded, theme)}`, 0, 0);
     },
   });
 }
@@ -853,46 +773,10 @@ function countSuccessWebActions(details: WebSearchDetails): number {
   return details.successes.reduce((acc, success) => acc + success.searchCalls.length, 0);
 }
 
-function countSuccessOperations(details: WebSearchDetails): number {
-  if (details.api === "responses") return details.queryCount;
-  const count = countSuccessWebActions(details);
-  return count > 0 ? count : details.queryCount;
-}
-
 function formatOperationNoun(details: WebSearchDetails, count: number): string {
   const singular = details.api === "standalone" ? "action" : "search";
   const plural = details.api === "standalone" ? "actions" : "searches";
   return count === 1 ? singular : plural;
-}
-
-function formatResultSuffix(details: WebSearchDetails): string {
-  const parts: string[] = [];
-  const webActionCount = countSuccessWebActions(details);
-  if (details.api === "responses" && webActionCount > 0) {
-    parts.push(`${webActionCount} web action${webActionCount === 1 ? "" : "s"}`);
-  }
-
-  const citationCount = countSuccessCitations(details);
-  if (citationCount > 0) {
-    parts.push(`${citationCount} source${citationCount === 1 ? "" : "s"}`);
-  }
-
-  return parts.length > 0 ? ` · ${parts.join(" · ")}` : "";
-}
-
-function formatDurationSuffix(elapsedMs: number | undefined): string {
-  if (elapsedMs === undefined) return "";
-  if (elapsedMs < 1000) return ` in ${elapsedMs}ms`;
-  return ` in ${Math.max(1, Math.round(elapsedMs / 1000))}s`;
-}
-
-function formatModeLabel(
-  api: string,
-  searchContextSize: string,
-  freshness: string | undefined,
-): string {
-  if (api === "standalone") return `[${api}/${searchContextSize}]`;
-  return `[${api}/${searchContextSize}/${freshness ?? "live"}]`;
 }
 
 function formatFailureBlock(failure: QueryFailure, multiple: boolean): string {
@@ -900,7 +784,7 @@ function formatFailureBlock(failure: QueryFailure, multiple: boolean): string {
   return multiple ? `## Query: ${failure.query}\n\nFAILED: ${body}` : `FAILED: ${body}`;
 }
 
-function renderResponsesProgress(details: WebSearchDetails | undefined, theme: Theme): string {
+function renderToolProgress(details: WebSearchDetails | undefined, theme: Theme): string {
   if (!details) return theme.fg("muted", "Searching…");
   const completed = details.completed ?? 0;
   const total = details.total ?? details.queryCount;
@@ -912,8 +796,8 @@ function renderResponsesProgress(details: WebSearchDetails | undefined, theme: T
   );
 }
 
-function renderResponsesResult(details: WebSearchDetails, expanded: boolean, theme: Theme): string {
-  const summary = renderResponsesSummary(details, theme);
+function renderToolResult(details: WebSearchDetails, expanded: boolean, theme: Theme): string {
+  const summary = renderToolSummary(details, theme);
   if (!expanded) {
     const hasDetails = details.successes.length > 0 || details.failures.length > 0;
     return hasDetails
@@ -952,15 +836,15 @@ function renderResponsesResult(details: WebSearchDetails, expanded: boolean, the
   return text;
 }
 
-function renderResponsesSummary(details: WebSearchDetails, theme: Theme): string {
+function renderToolSummary(details: WebSearchDetails, theme: Theme): string {
   const succeeded = details.queryCount - details.failedQueryCount;
   const searchCount =
     details.failedQueryCount > 0
-      ? `${succeeded}/${details.queryCount} searches`
-      : `${succeeded} ${succeeded === 1 ? "search" : "searches"}`;
+      ? `${succeeded}/${details.queryCount} ${formatOperationNoun(details, 2)}`
+      : `${succeeded} ${formatOperationNoun(details, succeeded)}`;
   const parts = [searchCount];
   const webActionCount = countSuccessWebActions(details);
-  if (webActionCount > 0) {
+  if (details.api === "responses" && webActionCount > 0) {
     parts.push(`${webActionCount} web action${webActionCount === 1 ? "" : "s"}`);
   }
   const sourceCount = countSuccessCitations(details);
@@ -984,53 +868,6 @@ function renderToolOutput(value: string, theme: Theme): string {
     .split("\n")
     .map((line) => theme.fg("toolOutput", line))
     .join("\n");
-}
-
-function renderPartial(details: WebSearchDetails | undefined, theme: Theme): string {
-  if (!details) return theme.fg("warning", "Searching the web…");
-  const completed = details.completed ?? 0;
-  const total = details.total ?? details.queryCount;
-  const header = theme.fg("warning", `Searching ${completed}/${total}`);
-  const trailingDot = completed < total ? theme.fg("dim", " …") : theme.fg("dim", " (finalizing)");
-  return header + trailingDot;
-}
-
-function renderCollapsedPreview(details: WebSearchDetails, theme: Theme): string {
-  const lines: string[] = [];
-  const successPreview = renderSuccessPreview(details, theme);
-  if (successPreview) lines.push(successPreview);
-
-  const firstFailure = details.failures[0];
-  if (firstFailure) {
-    lines.push(theme.fg("dim", formatInline(firstFailure.message, 110)));
-  }
-  return lines.join("\n");
-}
-
-function renderSuccessPreview(details: WebSearchDetails, theme: Theme): string {
-  if (details.api !== "standalone") return "";
-  const success = details.successes[0];
-  if (!success) return "";
-  const line = firstNonEmptyLine(success.text);
-  if (!line) return "";
-  const actionType = success.searchCalls[0]?.actionType;
-  return theme.fg("dim", `${formatStandalonePreviewLabel(actionType)}: ${formatInline(line, 120)}`);
-}
-
-function firstNonEmptyLine(text: string): string {
-  return (
-    text
-      .split("\n")
-      .map((line) => line.trim())
-      .find((line) => line.length > 0) ?? ""
-  );
-}
-
-function formatStandalonePreviewLabel(actionType: string | undefined): string {
-  if (actionType === "open_page" || actionType === "click") return "Opened";
-  if (actionType === "find_in_page") return "Found";
-  if (actionType === "screenshot") return "Screenshot";
-  return "Result";
 }
 
 function renderCallQueries(queries: unknown[], theme: Theme): string {
