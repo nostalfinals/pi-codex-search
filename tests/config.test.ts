@@ -266,16 +266,16 @@ describe("config loader", () => {
     assert.equal(resolved.standaloneEnabled, true);
   });
 
-  it("reads reasoningEffort from the project file", async () => {
+  it("passes through non-enum reasoningEffort values like xhigh", async () => {
     await mkdir(join(cwd, ".pi"), { recursive: true });
     await writeFile(
       join(cwd, ".pi", CONFIG_FILE_NAME),
-      JSON.stringify({ reasoningEffort: "high" }),
+      JSON.stringify({ reasoningEffort: "xhigh" }),
       "utf-8",
     );
 
     const resolved = await loadConfig(cwd);
-    assert.equal(resolved.reasoningEffort, "high");
+    assert.equal(resolved.reasoningEffort, "xhigh");
   });
 
   it("reads reasoningEffort from env", async () => {
@@ -285,8 +285,13 @@ describe("config loader", () => {
     assert.equal(resolved.reasoningEffort, "minimal");
   });
 
-  it("rejects an invalid reasoningEffort value", async () => {
-    process.env.PI_CODEX_WEB_SEARCH_REASONING_EFFORT = "extreme";
+  it("rejects an empty reasoningEffort value", async () => {
+    await mkdir(join(cwd, ".pi"), { recursive: true });
+    await writeFile(
+      join(cwd, ".pi", CONFIG_FILE_NAME),
+      JSON.stringify({ reasoningEffort: "" }),
+      "utf-8",
+    );
     await assert.rejects(loadConfig(cwd), /Invalid reasoningEffort/);
   });
 

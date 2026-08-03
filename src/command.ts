@@ -8,7 +8,7 @@ import {
   type SettingItem,
   SettingsList,
 } from "@earendil-works/pi-tui";
-import { type CodexModel, fetchCodexModels, type ReasoningEffort } from "./codex.ts";
+import { type CodexModel, fetchCodexModels } from "./codex.ts";
 import {
   type ConfigScope,
   DEFAULT_BATCH_SIZE,
@@ -128,17 +128,6 @@ const CYCLE_FIELDS: CycleField[] = [
       normalizeStandaloneSearchContext(c);
     },
   },
-  {
-    id: "reasoningEffort",
-    label: "Reasoning effort",
-    description: "Model reasoning effort; unset defers to the backend default",
-    values: () => [defaultTag("unset"), "minimal", "low", "medium", "high"],
-    get: (c) => (c.reasoningEffort === undefined ? defaultTag("unset") : c.reasoningEffort),
-    apply: (c, v) => {
-      if (isDefaultTag(v)) delete c.reasoningEffort;
-      else c.reasoningEffort = v as ReasoningEffort;
-    },
-  },
 ];
 
 const TEXT_FIELDS: TextField[] = [
@@ -151,6 +140,19 @@ const TEXT_FIELDS: TextField[] = [
     apply: (c, v) => {
       if (v) c.model = v;
       else delete c.model;
+    },
+  },
+  {
+    id: "reasoningEffort",
+    label: "Reasoning effort",
+    description:
+      "Reasoning effort forwarded as-is (none, minimal, low, medium, high, xhigh, ...); empty uses the backend default",
+    defaultDisplay: "unset",
+    get: (c) => c.reasoningEffort,
+    apply: (c, v) => {
+      const trimmed = v.trim();
+      if (trimmed) c.reasoningEffort = trimmed;
+      else delete c.reasoningEffort;
     },
   },
   {

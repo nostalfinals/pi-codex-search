@@ -9,7 +9,6 @@ import type {
   CodexWebSearchResult,
   CodexCitation,
   CodexSearchCall,
-  ReasoningEffort,
   SearchContextSize,
   Freshness,
   StandaloneExternalWebAccess,
@@ -96,7 +95,7 @@ export interface StandaloneCommandsOptions {
   time?: TimeCommand[];
   freshness: Freshness;
   searchContextSize?: SearchContextSize;
-  reasoningEffort?: ReasoningEffort;
+  reasoningEffort?: string;
   responseLength?: ResponseLength;
   maxOutputTokens?: number;
   signal?: AbortSignal;

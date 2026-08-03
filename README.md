@@ -183,7 +183,7 @@ Full schema, all fields optional:
 
 `searchApi: "standalone"` from older configs is treated as `standaloneEnabled: true` for compatibility.
 
-`reasoningEffort` sets the model's reasoning effort (`minimal`, `low`, `medium`, or `high`) and is passed as `reasoning.effort` in both `/codex/responses` and `/codex/alpha/search` requests. It is unset by default, in which case the backend's default applies.
+`reasoningEffort` sets the model's reasoning effort and is passed as `reasoning.effort` in both `/codex/responses` and `/codex/alpha/search` requests. Any non-empty string is accepted and forwarded as-is (e.g. `none`, `minimal`, `low`, `medium`, `high`, `xhigh`); supported values depend on the model. It is unset by default, in which case the backend's default applies.
 
 Environment variable equivalents:
 

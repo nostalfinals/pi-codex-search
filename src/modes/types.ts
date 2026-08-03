@@ -1,6 +1,5 @@
 export type SearchContextSize = "low" | "medium" | "high";
 export type Freshness = "live" | "cached" | "indexed";
-export type ReasoningEffort = "minimal" | "low" | "medium" | "high";
 export type StandaloneExternalWebAccess = boolean | "indexed";
 export type ResponseLength = "short" | "medium" | "long";
 

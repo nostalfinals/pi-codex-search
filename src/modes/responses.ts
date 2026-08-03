@@ -9,7 +9,6 @@ import type {
   CodexWebSearchResult,
   CodexCitation,
   CodexSearchCall,
-  ReasoningEffort,
   SearchContextSize,
 } from "./types.ts";
 
@@ -20,7 +19,7 @@ export interface ResponsesSearchOptions {
   externalWebAccess: boolean;
   indexedWebAccess?: true;
   searchContextSize?: SearchContextSize;
-  reasoningEffort?: ReasoningEffort;
+  reasoningEffort?: string;
   sessionId?: string;
   threadId?: string;
   signal?: AbortSignal;
