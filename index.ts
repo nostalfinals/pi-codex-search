@@ -715,14 +715,38 @@ function buildTool(config: ResolvedConfig) {
   });
 }
 
-export default function codexWebSearchExtension(pi: ExtensionAPI) {
+export default async function codexWebSearchExtension(pi: ExtensionAPI) {
   registerSettingsCommand(pi);
+
+  // Pi constructs transcript tool rows before session_start. Register render-capable
+  // definitions now so restored tool calls do not permanently fall back to raw JSON
+  // and Markdown. Project config remains deferred until trust has been resolved.
+  const bootstrapConfig = await loadConfig(process.cwd(), false);
+  pi.registerTool(
+    buildTool({ ...bootstrapConfig, searchApi: "responses", toolName: "codex_search" }),
+  );
+  pi.registerTool(
+    buildTool({
+      ...bootstrapConfig,
+      searchApi: "standalone",
+      toolName: STANDALONE_TOOL_NAME,
+      batchSize: 1,
+    }),
+  );
 
   pi.on("session_start", async (_event, ctx) => {
     const config = await loadConfig(ctx.cwd, isProjectTrustedContext(ctx));
-    if (!config.enabled) return;
+    const activeTools = pi
+      .getActiveTools()
+      .filter((name) => name !== "codex_search" && name !== STANDALONE_TOOL_NAME);
+
+    if (!config.enabled) {
+      pi.setActiveTools(activeTools);
+      return;
+    }
 
     pi.registerTool(buildTool({ ...config, searchApi: "responses", toolName: "codex_search" }));
+    activeTools.push("codex_search");
     if (config.standaloneEnabled) {
       pi.registerTool(
         buildTool({
@@ -732,7 +756,9 @@ export default function codexWebSearchExtension(pi: ExtensionAPI) {
           batchSize: 1,
         }),
       );
+      activeTools.push(STANDALONE_TOOL_NAME);
     }
+    pi.setActiveTools(activeTools);
   });
 }
 
