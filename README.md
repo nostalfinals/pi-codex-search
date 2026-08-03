@@ -154,8 +154,8 @@ Useful subcommands:
 Settings are merged from three layers, highest precedence first:
 
 1. Environment variables.
-2. Project file: `<cwd>/.pi/pi-codex-search.json`.
-3. Home file: `~/.pi/agent/pi-codex-search.json`.
+2. Project file: `<cwd>/.pi/codex-search.json`.
+3. Home file: `~/.pi/agent/codex-search.json`.
 
 Each layer is optional. Missing files are skipped. Malformed JSON or invalid values fail fast so you do not silently run with the wrong tool settings.
 
