@@ -872,7 +872,7 @@ function renderToolOutput(value: string, theme: Theme): string {
 
 function renderCallQueries(queries: unknown[], theme: Theme): string {
   return formatQueryPreviewLines(queries)
-    .map((line) => `${theme.fg("accent", line.slice(0, 4))}${theme.fg("dim", line.slice(4))}`)
+    .map((line) => theme.fg("accent", line))
     .join("\n");
 }
 
