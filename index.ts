@@ -643,14 +643,14 @@ function buildTool(config: ResolvedConfig) {
 
       if (config.searchApi === "responses") {
         if (isPartial) {
-          return new Text(renderResponsesProgress(details, theme), 0, 0);
+          return new Text(`\n${renderResponsesProgress(details, theme)}`, 0, 0);
         }
         if (!details) {
           const content = result.content.find((part) => part.type === "text");
           const text = content?.type === "text" ? content.text : "";
-          return new Text(text || theme.fg("muted", "Search finished"), 0, 0);
+          return new Text(`\n${text || theme.fg("muted", "Search finished")}`, 0, 0);
         }
-        return new Text(renderResponsesResult(details, expanded, theme), 0, 0);
+        return new Text(`\n${renderResponsesResult(details, expanded, theme)}`, 0, 0);
       }
 
       if (isPartial) {
@@ -891,7 +891,7 @@ function renderResponsesResult(details: WebSearchDetails, expanded: boolean, the
   if (!expanded) {
     const hasDetails = details.successes.length > 0 || details.failures.length > 0;
     return hasDetails
-      ? `${summary}${theme.fg("dim", `  (${keyHint("app.tools.expand", "to expand")})`)}`
+      ? `${summary}  ${theme.fg("muted", "(")}${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`
       : summary;
   }
 
