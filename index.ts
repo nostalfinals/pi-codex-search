@@ -346,6 +346,7 @@ function buildTool(config: ResolvedConfig) {
           sessionId: ctx.sessionManager.getSessionId(),
           freshness,
           searchContextSize,
+          reasoningEffort: config.reasoningEffort,
           maxOutputTokens: 8000,
           signal,
         };
@@ -538,6 +539,7 @@ function buildTool(config: ResolvedConfig) {
               externalWebAccess: freshness !== "cached",
               indexedWebAccess: freshness === "indexed" ? true : undefined,
               searchContextSize,
+              reasoningEffort: config.reasoningEffort,
               sessionId: ctx.sessionManager.getSessionId(),
               threadId: ctx.sessionManager.getSessionId(),
               signal,

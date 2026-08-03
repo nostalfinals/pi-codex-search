@@ -9,6 +9,7 @@ import type {
   CodexWebSearchResult,
   CodexCitation,
   CodexSearchCall,
+  ReasoningEffort,
   SearchContextSize,
 } from "./types.ts";
 
@@ -19,6 +20,7 @@ export interface ResponsesSearchOptions {
   externalWebAccess: boolean;
   indexedWebAccess?: true;
   searchContextSize?: SearchContextSize;
+  reasoningEffort?: ReasoningEffort;
   sessionId?: string;
   threadId?: string;
   signal?: AbortSignal;
@@ -88,6 +90,7 @@ export async function runResponsesSearch(
     externalWebAccess,
     indexedWebAccess,
     searchContextSize,
+    reasoningEffort,
     sessionId,
     threadId,
     signal,
@@ -107,27 +110,30 @@ export async function runResponsesSearch(
   };
   if (indexedWebAccess) webSearchTool.indexed_web_access = true;
 
+  const body: Record<string, unknown> = {
+    model,
+    instructions:
+      "You are a concise web search assistant. Use web search, answer the query, and preserve source citations from annotations.",
+    input: [
+      {
+        type: "message",
+        role: "user",
+        content: [{ type: "input_text", text: query }],
+      },
+    ],
+    tools: [webSearchTool],
+    tool_choice: "required",
+    parallel_tool_calls: true,
+    store: false,
+    stream: true,
+    include: [],
+  };
+  if (reasoningEffort !== undefined) body.reasoning = { effort: reasoningEffort };
+
   const response = await transport.fetch(transport.resolveEndpoint("responses"), {
     method: "POST",
     headers,
-    body: JSON.stringify({
-      model,
-      instructions:
-        "You are a concise web search assistant. Use web search, answer the query, and preserve source citations from annotations.",
-      input: [
-        {
-          type: "message",
-          role: "user",
-          content: [{ type: "input_text", text: query }],
-        },
-      ],
-      tools: [webSearchTool],
-      tool_choice: "required",
-      parallel_tool_calls: true,
-      store: false,
-      stream: true,
-      include: [],
-    }),
+    body: JSON.stringify(body),
     signal,
   });
 

@@ -10,6 +10,7 @@ export type {
   CodexSearchCall,
   CodexWebSearchResult,
   Freshness,
+  ReasoningEffort,
   ResponseLength,
   SearchContextSize,
   StandaloneExternalWebAccess,

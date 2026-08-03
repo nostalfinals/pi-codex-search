@@ -172,6 +172,7 @@ Full schema, all fields optional:
   "clientVersion": "1.0.0",
   "searchContextSize": "medium",
   "freshness": "live",
+  "reasoningEffort": "medium",
   "batchSize": 5
 }
 ```
@@ -182,18 +183,21 @@ Full schema, all fields optional:
 
 `searchApi: "standalone"` from older configs is treated as `standaloneEnabled: true` for compatibility.
 
+`reasoningEffort` sets the model's reasoning effort (`minimal`, `low`, `medium`, or `high`) and is passed as `reasoning.effort` in both `/codex/responses` and `/codex/alpha/search` requests. It is unset by default, in which case the backend's default applies.
+
 Environment variable equivalents:
 
-| Field               | Env var                              |
-| ------------------- | ------------------------------------ |
-| `enabled`           | `PI_CODEX_WEB_SEARCH_ENABLED`        |
-| `standaloneEnabled` | `PI_CODEX_WEB_STANDALONE_ENABLED`    |
-| `model`             | `PI_CODEX_WEB_SEARCH_MODEL`          |
-| `baseUrl`           | `PI_CODEX_WEB_SEARCH_BASE_URL`       |
-| `clientVersion`     | `PI_CODEX_WEB_SEARCH_CLIENT_VERSION` |
-| `searchContextSize` | `PI_CODEX_WEB_SEARCH_CONTEXT_SIZE`   |
-| `freshness`         | `PI_CODEX_WEB_SEARCH_FRESHNESS`      |
-| `batchSize`         | `PI_CODEX_WEB_SEARCH_BATCH_SIZE`     |
+| Field               | Env var                                |
+| ------------------- | -------------------------------------- |
+| `enabled`           | `PI_CODEX_WEB_SEARCH_ENABLED`          |
+| `standaloneEnabled` | `PI_CODEX_WEB_STANDALONE_ENABLED`      |
+| `model`             | `PI_CODEX_WEB_SEARCH_MODEL`            |
+| `baseUrl`           | `PI_CODEX_WEB_SEARCH_BASE_URL`         |
+| `clientVersion`     | `PI_CODEX_WEB_SEARCH_CLIENT_VERSION`   |
+| `searchContextSize` | `PI_CODEX_WEB_SEARCH_CONTEXT_SIZE`     |
+| `freshness`         | `PI_CODEX_WEB_SEARCH_FRESHNESS`        |
+| `reasoningEffort`   | `PI_CODEX_WEB_SEARCH_REASONING_EFFORT` |
+| `batchSize`         | `PI_CODEX_WEB_SEARCH_BATCH_SIZE`       |
 
 `PI_CODEX_WEB_SEARCH_ENABLED` accepts `true` / `false` (case-insensitive). Any other value fails config loading.
 

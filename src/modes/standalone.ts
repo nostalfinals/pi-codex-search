@@ -9,6 +9,7 @@ import type {
   CodexWebSearchResult,
   CodexCitation,
   CodexSearchCall,
+  ReasoningEffort,
   SearchContextSize,
   Freshness,
   StandaloneExternalWebAccess,
@@ -95,6 +96,7 @@ export interface StandaloneCommandsOptions {
   time?: TimeCommand[];
   freshness: Freshness;
   searchContextSize?: SearchContextSize;
+  reasoningEffort?: ReasoningEffort;
   responseLength?: ResponseLength;
   maxOutputTokens?: number;
   signal?: AbortSignal;
@@ -167,6 +169,7 @@ export async function runStandaloneCommands(
     sessionId,
     freshness,
     searchContextSize,
+    reasoningEffort,
     responseLength,
     maxOutputTokens,
     signal,
@@ -228,6 +231,7 @@ export async function runStandaloneCommands(
     },
   };
   body.max_output_tokens = maxOutputTokens ?? 8000;
+  if (reasoningEffort !== undefined) body.reasoning = { effort: reasoningEffort };
 
   const bodyText = JSON.stringify(body);
   let response = await transport.fetch(transport.resolveSearchEndpoint(), {

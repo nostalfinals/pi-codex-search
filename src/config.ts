@@ -1,7 +1,7 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import type { SearchContextSize } from "./codex.ts";
+import type { ReasoningEffort, SearchContextSize } from "./codex.ts";
 
 export type SearchApi = "standalone" | "responses";
 
@@ -17,6 +17,7 @@ export interface PiCodexSearchConfig {
   clientVersion?: string;
   searchContextSize?: SearchContextSize;
   freshness?: Freshness;
+  reasoningEffort?: ReasoningEffort;
   searchApi?: SearchApi;
   standaloneEnabled?: boolean;
   batchSize?: number;
@@ -30,6 +31,7 @@ export interface ResolvedConfig {
   clientVersion?: string;
   defaultSearchContextSize: SearchContextSize;
   defaultFreshness: Freshness;
+  reasoningEffort?: ReasoningEffort;
   searchApi: SearchApi;
   standaloneEnabled: boolean;
   batchSize: number;
@@ -52,6 +54,12 @@ export const CONFIG_FILE_NAME = "pi-codex-search.json";
 const TOOL_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/;
 const CONTEXT_SIZES: readonly SearchContextSize[] = ["low", "medium", "high"] as const;
 const FRESHNESS_VALUES: readonly Freshness[] = ["live", "cached", "indexed"] as const;
+const REASONING_EFFORT_VALUES: readonly ReasoningEffort[] = [
+  "minimal",
+  "low",
+  "medium",
+  "high",
+] as const;
 const SEARCH_API_VALUES: readonly SearchApi[] = ["standalone", "responses"] as const;
 export const MIN_BATCH_SIZE = 1;
 export const MAX_BATCH_SIZE = 32;
@@ -101,6 +109,7 @@ export async function loadConfig(cwd: string, isProjectTrusted = true): Promise<
   if (merged.model !== undefined) resolved.model = merged.model;
   if (merged.baseUrl !== undefined) resolved.baseUrl = merged.baseUrl;
   if (merged.clientVersion !== undefined) resolved.clientVersion = merged.clientVersion;
+  if (merged.reasoningEffort !== undefined) resolved.reasoningEffort = merged.reasoningEffort;
   if (homeConfig) resolved.sources.home = homeConfig;
   if (projectConfig) resolved.sources.project = projectConfig;
   if (envConfig && Object.keys(envConfig).length > 0) resolved.sources.env = envConfig;
@@ -172,6 +181,8 @@ function readEnvConfig(): PiCodexSearchConfig | undefined {
   }
   const freshness = trimmedEnv("PI_CODEX_WEB_SEARCH_FRESHNESS");
   if (freshness !== undefined) env.freshness = freshness as Freshness;
+  const reasoningEffort = trimmedEnv("PI_CODEX_WEB_SEARCH_REASONING_EFFORT");
+  if (reasoningEffort !== undefined) env.reasoningEffort = reasoningEffort as ReasoningEffort;
   const searchApi = trimmedEnv("PI_CODEX_WEB_SEARCH_API");
   if (searchApi !== undefined) env.searchApi = searchApi as SearchApi;
   const standaloneEnabled = booleanEnv("PI_CODEX_WEB_STANDALONE_ENABLED");
@@ -215,6 +226,15 @@ function validateConfig(config: PiCodexSearchConfig, sourceLabel: string): void 
     throw new Error(
       `Invalid freshness in ${sourceLabel}: ${JSON.stringify(config.freshness)}. ` +
         `Expected one of ${FRESHNESS_VALUES.join(", ")}.`,
+    );
+  }
+  if (
+    config.reasoningEffort !== undefined &&
+    !REASONING_EFFORT_VALUES.includes(config.reasoningEffort)
+  ) {
+    throw new Error(
+      `Invalid reasoningEffort in ${sourceLabel}: ${JSON.stringify(config.reasoningEffort)}. ` +
+        `Expected one of ${REASONING_EFFORT_VALUES.join(", ")}.`,
     );
   }
   if (config.standaloneEnabled !== undefined && typeof config.standaloneEnabled !== "boolean") {

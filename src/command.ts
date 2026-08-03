@@ -8,7 +8,7 @@ import {
   type SettingItem,
   SettingsList,
 } from "@earendil-works/pi-tui";
-import { type CodexModel, fetchCodexModels } from "./codex.ts";
+import { type CodexModel, fetchCodexModels, type ReasoningEffort } from "./codex.ts";
 import {
   type ConfigScope,
   DEFAULT_BATCH_SIZE,
@@ -126,6 +126,17 @@ const CYCLE_FIELDS: CycleField[] = [
       if (isDefaultTag(v)) delete c.searchContextSize;
       else c.searchContextSize = v as PiCodexSearchConfig["searchContextSize"];
       normalizeStandaloneSearchContext(c);
+    },
+  },
+  {
+    id: "reasoningEffort",
+    label: "Reasoning effort",
+    description: "Model reasoning effort; unset defers to the backend default",
+    values: () => [defaultTag("unset"), "minimal", "low", "medium", "high"],
+    get: (c) => (c.reasoningEffort === undefined ? defaultTag("unset") : c.reasoningEffort),
+    apply: (c, v) => {
+      if (isDefaultTag(v)) delete c.reasoningEffort;
+      else c.reasoningEffort = v as ReasoningEffort;
     },
   },
 ];
@@ -511,6 +522,7 @@ export function formatStatus(resolved: ResolvedConfig, cwd: string): string {
   lines.push(`  clientVersion       = ${resolved.clientVersion ?? "(default)"}`);
   lines.push(`  searchContextSize   = ${resolved.defaultSearchContextSize}`);
   lines.push(`  freshness           = ${resolved.defaultFreshness}`);
+  lines.push(`  reasoningEffort     = ${resolved.reasoningEffort ?? "(backend default)"}`);
   lines.push(`  searchApi           = responses`);
   lines.push(`  standaloneEnabled   = ${resolved.standaloneEnabled}`);
   lines.push(`  maxBatchSize        = ${resolved.batchSize}`);

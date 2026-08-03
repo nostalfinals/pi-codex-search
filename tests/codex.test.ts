@@ -363,6 +363,32 @@ describe("codex helpers", () => {
     assert.deepEqual(result.citations, [{ title: "OpenAI", url: "https://openai.com" }]);
   });
 
+  it("sends reasoning effort to the standalone endpoint when set", async () => {
+    let requestedBody: unknown;
+    const fetchImpl = async (_input: string | URL | Request, init?: RequestInit) => {
+      requestedBody = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({ output: "Search result." }));
+    };
+
+    const transport = createTransport({
+      token: "token",
+      accountId: "account",
+      baseUrl: "https://example.test/backend/codex",
+      fetchImpl: fetchImpl as typeof fetch,
+    });
+
+    await runStandaloneCommands({
+      model: "gpt-test",
+      transport,
+      sessionId: "pi-codex-search",
+      searchQuery: [{ q: "OpenAI news" }],
+      freshness: "live",
+      reasoningEffort: "low",
+    });
+
+    assert.deepEqual((requestedBody as { reasoning?: unknown }).reasoning, { effort: "low" });
+  });
+
   it("treats null standalone structured results as unavailable", async () => {
     const fetchImpl = async () =>
       new Response(JSON.stringify({ output: "Lookup result turn0fetch0", results: null }));
@@ -694,6 +720,40 @@ describe("codex helpers", () => {
     });
 
     assert.equal(requestedBody.tools?.[0]?.indexed_web_access, true);
+  });
+
+  it("sends reasoning effort to /codex/responses when set and omits it otherwise", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const sse =
+      'event: response.output_item.done\ndata: {"item":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"ok"}]}}\n\n';
+    const fetchImpl = async (_input: string | URL | Request, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return new Response(sse, { headers: { "content-type": "text/event-stream" } });
+    };
+
+    const transport = createTransport({
+      token: "token",
+      accountId: "account",
+      baseUrl: "https://example.test/backend",
+      fetchImpl: fetchImpl as typeof fetch,
+    });
+
+    await runResponsesSearch({
+      query: "q",
+      model: "m",
+      transport,
+      externalWebAccess: true,
+      reasoningEffort: "high",
+    });
+    assert.deepEqual(bodies[0]?.reasoning, { effort: "high" });
+
+    await runResponsesSearch({
+      query: "q",
+      model: "m",
+      transport,
+      externalWebAccess: true,
+    });
+    assert.equal(bodies[1]?.reasoning, undefined);
   });
 
   it("summarizes Cloudflare challenge HTML errors", async () => {

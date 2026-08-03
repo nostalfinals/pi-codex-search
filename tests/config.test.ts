@@ -27,6 +27,7 @@ const ENV_KEYS = [
   "PI_CODEX_WEB_SEARCH_CLIENT_VERSION",
   "PI_CODEX_WEB_SEARCH_CONTEXT_SIZE",
   "PI_CODEX_WEB_SEARCH_FRESHNESS",
+  "PI_CODEX_WEB_SEARCH_REASONING_EFFORT",
   "PI_CODEX_WEB_SEARCH_API",
   "PI_CODEX_WEB_STANDALONE_ENABLED",
   "PI_CODEX_WEB_SEARCH_BATCH_SIZE",
@@ -84,6 +85,7 @@ describe("config loader", () => {
     assert.equal(resolved.toolName, DEFAULT_TOOL_NAME);
     assert.equal(resolved.defaultFreshness, DEFAULT_FRESHNESS);
     assert.equal(resolved.defaultSearchContextSize, DEFAULT_SEARCH_CONTEXT_SIZE);
+    assert.equal(resolved.reasoningEffort, undefined);
     assert.equal(resolved.searchApi, DEFAULT_SEARCH_API);
     assert.equal(resolved.batchSize, DEFAULT_BATCH_SIZE);
     assert.equal(resolved.model, undefined);
@@ -262,6 +264,30 @@ describe("config loader", () => {
     assert.equal(resolved.defaultFreshness, "indexed");
     assert.equal(resolved.searchApi, "responses");
     assert.equal(resolved.standaloneEnabled, true);
+  });
+
+  it("reads reasoningEffort from the project file", async () => {
+    await mkdir(join(cwd, ".pi"), { recursive: true });
+    await writeFile(
+      join(cwd, ".pi", CONFIG_FILE_NAME),
+      JSON.stringify({ reasoningEffort: "high" }),
+      "utf-8",
+    );
+
+    const resolved = await loadConfig(cwd);
+    assert.equal(resolved.reasoningEffort, "high");
+  });
+
+  it("reads reasoningEffort from env", async () => {
+    process.env.PI_CODEX_WEB_SEARCH_REASONING_EFFORT = "minimal";
+
+    const resolved = await loadConfig(cwd);
+    assert.equal(resolved.reasoningEffort, "minimal");
+  });
+
+  it("rejects an invalid reasoningEffort value", async () => {
+    process.env.PI_CODEX_WEB_SEARCH_REASONING_EFFORT = "extreme";
+    await assert.rejects(loadConfig(cwd), /Invalid reasoningEffort/);
   });
 
   it("rejects an invalid searchApi value", async () => {
